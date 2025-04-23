@@ -121,6 +121,7 @@ Right-click menu provides quick access to:
   - In the preferences on the addon choose your main collections
   - Click on refresh, dropdown menu now show your collection subfolders.
   - Choose SVG in Preview Panel, and voila!
+  - Extrat the SVGs Collections.zip file provided and try
 
 4. Use layer system for complex designs
 5. Convert to mesh only when final result is achieved
