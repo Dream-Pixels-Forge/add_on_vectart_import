@@ -1,5 +1,7 @@
 # VectArt - SVG Import & Layer Management for Blender
 
+![vectart_import_logo](https://github.com/user-attachments/assets/1e0ec924-6cad-40f1-8a41-c623b9232046)
+
 ## Overview
 VectArt is a powerful Blender addon that enhances SVG file management and curve manipulation. It provides an intuitive interface for importing SVG files, organizing them in layers, and managing curve properties with real-time updates.
 
