@@ -31,7 +31,7 @@ class VECTART_PT_LibraryPanel(Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(text="Library path not set!", icon='ERROR')
-            col.operator("preferences.addon_show", text="Open Preferences", icon='PREFERENCES').module = __package__.split('.')[0]
+            col.operator("preferences.addon_show", text="Open Preferences", icon='PREFERENCES').module = __package__
             return
             
         path_box = layout.box()

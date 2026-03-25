@@ -155,7 +155,7 @@ def get_preview_items(self, context):
     return pcoll.enum_items if hasattr(pcoll, "enum_items") else []
 
 class VectartAddonPreferences(AddonPreferences):
-    bl_idname = __package__.split('.')[0]
+    bl_idname = __package__
     base_path: StringProperty(name="Library Path", subtype='DIR_PATH', default="", description="Base path for SVG library")
     def draw(self, context):
         self.layout.prop(self, "base_path")

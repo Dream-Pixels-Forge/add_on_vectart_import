@@ -24,10 +24,7 @@ def get_svg_scale_factor(dpi=96.0):
 
 def get_addon_prefs():
     """Get addon preferences"""
-    # Note: Using __package__.split('.')[0] to get the root package name
-    # in case it's nested, but since it's a flat extension it should be fine.
-    # We will use the actual bl_idname in properties.py
-    return bpy.context.preferences.addons[__package__.split('.')[0]].preferences
+    return bpy.context.preferences.addons[__package__].preferences
 
 _base_path_warned = False
 
@@ -35,10 +32,7 @@ def get_base_path():
     """Get base path from preferences or scene"""
     global _base_path_warned
     try:
-        # We need to be careful with __package__ in utils.py when called from other modules
-        # Better to use the explicit name or a reliable way to get it
-        root_pkg = __package__.split('.')[0]
-        prefs = bpy.context.preferences.addons[root_pkg].preferences
+        prefs = bpy.context.preferences.addons[__package__].preferences
         
         if prefs and prefs.base_path and os.path.exists(prefs.base_path):
             _base_path_warned = False
