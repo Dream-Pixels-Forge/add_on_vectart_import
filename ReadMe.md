@@ -1,5 +1,7 @@
 # VectArt - Vector-to-3D Procedural Pipeline for Blender 5.1
 
+![vectart_import_logo](https://github.com/user-attachments/assets/1e0ec924-6cad-40f1-8a41-c623b9232046)
+
 ## Overview
 VectArt is a professional-grade Blender extension that transforms static SVG files into dynamic, procedural 3D environments. Built for the modern Blender 5.1 API, it bridges the gap between vector design and 3D modeling with high-performance engines.
 
