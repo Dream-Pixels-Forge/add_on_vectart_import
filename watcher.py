@@ -57,16 +57,18 @@ class VectArtFileWatcher:
         """Trigger reimport logic when file changes"""
         print(f"VectArt: File changed on disk: {filepath}")
         
-        # We need a context to run operators
-        # In background timers, we must be careful with context
         try:
-            # Check if this file is part of an active edit session
             from .operators import _vectart_session
             session_path = _vectart_session.get("svg_edit_path")
             
             if session_path and os.path.normpath(filepath) == os.path.normpath(session_path):
-                # Trigger the reimport operator
-                # Use a small delay to ensure file is completely written by the editor
-                bpy.app.timers.register(lambda: bpy.ops.object.reimport_edited_svg(), first_interval=0.2)
+                # We must provide a window context for the operator to run safely from a timer
+                window = bpy.context.window_manager.windows[0]
+                screen = window.screen
+                for area in screen.areas:
+                    if area.type == 'VIEW_3D':
+                        with bpy.context.temp_override(window=window, screen=screen, area=area):
+                            bpy.ops.object.reimport_edited_svg()
+                        break
         except Exception as e:
             print(f"VectArt Sync Error: {str(e)}")
