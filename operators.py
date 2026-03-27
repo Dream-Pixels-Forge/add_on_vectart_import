@@ -209,14 +209,19 @@ class VECTART_OT_ImportLibrarySVG(Operator):
                 gp_obj = convert_curves_to_gpv3(curves, target_collection=context.collection)
                 
                 if gp_obj:
-                    # Clear active object before removal to prevent crashes
-                    context.view_layer.objects.active = gp_obj
-                    gp_obj.select_set(True)
-                    
-                    # Remove original curves safely
+                    # Deselect everything first
+                    bpy.ops.object.select_all(action='DESELECT')
+                    # Select original curves for deletion
                     for c in curves:
                         if c.name in bpy.data.objects:
-                            bpy.data.objects.remove(c, do_unlink=True)
+                            c.select_set(True)
+                    
+                    # Safer to use operator for removal as it handles selection/unlinking better
+                    bpy.ops.object.delete()
+                    
+                    # Now set the new GP object as active
+                    context.view_layer.objects.active = gp_obj
+                    gp_obj.select_set(True)
                 else:
                     self.report({'ERROR'}, "Grease Pencil conversion failed.")
                     return {'CANCELLED'}

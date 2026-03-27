@@ -45,32 +45,65 @@ def convert_curves_to_gpv3(curves, target_collection=None):
             continue
 
         # Convert curve splines to GP strokes
+        mat = curve_obj.matrix_world
         for spline in curve_obj.data.splines:
             # Newer API uses add_stroke() or similar if new() is not available
+            stroke = None
             if hasattr(drawing.strokes, "new"):
                 stroke = drawing.strokes.new()
-            else:
-                # Fallback for alternative GPv3 implementations
-                stroke = drawing.add_stroke() if hasattr(drawing, "add_stroke") else None
+            elif hasattr(drawing, "add_stroke"):
+                stroke = drawing.add_stroke()
             
             if not stroke: continue
             
-            # Transfer points and handle handles for Bezier
-            points = []
+            # Transfer points with sampling for Bezier for better visual results
+            points_coords = []
             if spline.type == 'BEZIER':
-                # For GPv3 we sample the bezier or just take the points
-                # For simplicity we take the points, but sampling is better for "smooth" looks
-                for bp in spline.bezier_points:
-                    points.append(bp.co)
+                # Higher resolution for bezier sampling
+                resolution = spline.resolution_u
+                # Simple sampling: for each segment, get intermediate points
+                for i in range(len(spline.bezier_points) - (0 if spline.use_cyclic_u else 1)):
+                    p1 = spline.bezier_points[i]
+                    p2 = spline.bezier_points[(i + 1) % len(spline.bezier_points)]
+                    
+                    # Add points for this segment
+                    for step in range(resolution):
+                        t = step / resolution
+                        # Cubic Bezier formula
+                        c0 = (1-t)**3
+                        c1 = 3*t*(1-t)**2
+                        c2 = 3*t**2*(1-t)
+                        c3 = t**3
+                        
+                        co = (p1.co * c0 + 
+                             p1.handle_right * c1 + 
+                             p2.handle_left * c2 + 
+                             p2.co * c3)
+                        points_coords.append(mat @ co)
+                
+                if not spline.use_cyclic_u:
+                    points_coords.append(mat @ spline.bezier_points[-1].co)
             else:
+                # For POLY/NURBS splines
                 for p in spline.points:
-                    points.append(p.co[:3])
+                    points_coords.append(mat @ Vector(p.co[:3]))
             
-            if not points: continue
+            if not points_coords: continue
             
-            stroke.points.add(len(points))
-            for j, co in enumerate(points):
-                stroke.points[j].co = co
+            # Use the most robust way to add points to a stroke
+            num_points = len(points_coords)
+            if hasattr(stroke, "add_points"):
+                stroke.add_points(num_points)
+            elif hasattr(stroke.points, "add"):
+                try:
+                    stroke.points.add(count=num_points)
+                except TypeError:
+                    stroke.points.add(num_points)
+            
+            # Assign coordinates
+            for j, co in enumerate(points_coords):
+                if j < len(stroke.points):
+                    stroke.points[j].co = co
                 
             stroke.use_cyclic = spline.use_cyclic_u
             
