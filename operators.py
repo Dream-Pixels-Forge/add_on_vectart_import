@@ -61,19 +61,36 @@ class VECTART_OT_ImportSVG(Operator):
             print(f"Error in auto_assign_layer: {str(e)}")
 
     def execute(self, context):
-        if not self.filepath:
+        if not self.filepath or not os.path.exists(self.filepath):
+            self.report({'ERROR'}, f"SVG file not found: {self.filepath}")
             return {'CANCELLED'}
+            
         try:
-            bpy.ops.import_curve.svg(filepath=self.filepath)
-            imported_curves = [obj for obj in context.selected_objects if obj.type == 'CURVE']
+            # Store existing objects to find new ones
+            existing = set(bpy.data.objects[:])
+            
+            # Use the most appropriate SVG importer available
+            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                bpy.ops.import_scene.svg(filepath=self.filepath)
+            else:
+                try:
+                    bpy.ops.import_curve.svg(filepath=self.filepath)
+                except AttributeError:
+                    self.report({'ERROR'}, "SVG Importer not found. Please enable SVG support in Blender.")
+                    return {'CANCELLED'}
+
+            new_objs = set(bpy.data.objects[:]) - existing
+            imported_curves = [obj for obj in new_objs if obj.type == 'CURVE']
+            
             if not imported_curves:
-                self.report({'WARNING'}, "No curves imported")
+                self.report({'WARNING'}, "No curves were imported from the SVG.")
                 return {'CANCELLED'}
             
             props = context.scene.vectart_props
             for curve in imported_curves:
-                curve.data.bevel_depth = props.bevel_depth
-                curve.data.bevel_resolution = props.bevel_resolution
+                if hasattr(curve.data, "bevel_depth"):
+                    curve.data.bevel_depth = props.bevel_depth
+                    curve.data.bevel_resolution = props.bevel_resolution
                 for spline in curve.data.splines:
                     spline.use_cyclic_u = props.use_cyclic
             
@@ -82,6 +99,8 @@ class VECTART_OT_ImportSVG(Operator):
             return {'FINISHED'}
         except Exception as e:
             self.report({'ERROR'}, f"Import failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {'CANCELLED'}
 
     def invoke(self, context, event):
@@ -107,44 +126,73 @@ class VECTART_OT_ImportLibrarySVG(Operator):
     def execute(self, context):
         props = context.scene.vectart_library_props
         vprops = context.scene.vectart_props
-        if not props.preview_index:
+        
+        if not props.preview_index or not os.path.exists(props.preview_index):
+            self.report({'ERROR'}, f"Selected SVG file not found: {props.preview_index}")
             return {'CANCELLED'}
             
         try:
+            # Store existing objects to find new ones
             existing = set(bpy.data.objects[:])
-            bpy.ops.import_curve.svg(filepath=props.preview_index)
+            
+            # Use the most appropriate SVG importer available
+            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                bpy.ops.import_scene.svg(filepath=props.preview_index)
+            else:
+                try:
+                    bpy.ops.import_curve.svg(filepath=props.preview_index)
+                except AttributeError:
+                    self.report({'ERROR'}, "SVG Importer not found. Please enable SVG support in Blender.")
+                    return {'CANCELLED'}
+
             new_objs = set(bpy.data.objects[:]) - existing
             curves = [obj for obj in new_objs if obj.type == 'CURVE']
             
-            if not curves: return {'CANCELLED'}
+            if not curves:
+                self.report({'WARNING'}, "No curves were imported from the SVG.")
+                return {'CANCELLED'}
             
+            # Initial setup for imported curves
             bpy.ops.object.select_all(action='DESELECT')
             for c in curves:
                 c.select_set(True)
+                # Apply base settings
                 c.scale = Vector((vprops.scale_factor,) * 3)
-                c.data.bevel_depth = vprops.bevel_depth
-                c.data.bevel_resolution = vprops.bevel_resolution
-                for s in c.data.splines: s.use_cyclic_u = vprops.use_cyclic
+                if hasattr(c.data, "bevel_depth"):
+                    c.data.bevel_depth = vprops.bevel_depth
+                    c.data.bevel_resolution = vprops.bevel_resolution
+                for s in c.data.splines:
+                    s.use_cyclic_u = vprops.use_cyclic
             
+            # Apply transforms before engine-specific processing
             context.view_layer.objects.active = curves[0]
             bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
             
             if vprops.engine_type == 'GREASEPENCIL':
                 from .gp_utils import convert_curves_to_gpv3
                 gp_obj = convert_curves_to_gpv3(curves, target_collection=context.collection)
-                # Remove original curves after conversion
-                for c in curves:
-                    bpy.data.objects.remove(c, do_unlink=True)
+                
                 if gp_obj:
+                    # Clear active object before removal to prevent crashes
                     context.view_layer.objects.active = gp_obj
                     gp_obj.select_set(True)
+                    
+                    # Remove original curves safely
+                    for c in curves:
+                        if c.name in bpy.data.objects:
+                            bpy.data.objects.remove(c, do_unlink=True)
+                else:
+                    self.report({'ERROR'}, "Grease Pencil conversion failed.")
+                    return {'CANCELLED'}
             else:
                 bpy.ops.object.split_to_layers()
                 
             bpy.ops.object.focus_selected()
             return {'FINISHED'}
         except Exception as e:
-            self.report({'ERROR'}, str(e))
+            self.report({'ERROR'}, f"Import error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {'CANCELLED'}
 
 class VECTART_OT_RefreshLibrary(Operator):
@@ -442,9 +490,18 @@ class VECTART_OT_ReimportEditedSVG(Operator):
             bpy.data.objects.remove(o, do_unlink=True)
             
         # 3. Import updated SVG
-        existing_objs = set(bpy.data.objects)
-        bpy.ops.import_curve.svg(filepath=path)
-        imported = [o for o in (set(bpy.data.objects) - existing_objs) if o.type == 'CURVE']
+        existing_objs = set(bpy.data.objects[:])
+        
+        if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+            bpy.ops.import_scene.svg(filepath=path)
+        else:
+            try:
+                bpy.ops.import_curve.svg(filepath=path)
+            except AttributeError:
+                self.report({'ERROR'}, "SVG Importer not found.")
+                return {'CANCELLED'}
+
+        imported = [o for o in (set(bpy.data.objects[:]) - existing_objs) if o.type == 'CURVE']
         
         # 4. Map back to layers and restore materials if possible
         for i, o in enumerate(imported):
@@ -551,7 +608,16 @@ class VECTART_OT_ReimportSVG(Operator):
         try:
             # 1. Track imported objects
             before = set(bpy.data.objects[:])
-            bpy.ops.import_curve.svg(filepath=self.filepath)
+            
+            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                bpy.ops.import_scene.svg(filepath=self.filepath)
+            else:
+                try:
+                    bpy.ops.import_curve.svg(filepath=self.filepath)
+                except AttributeError:
+                    self.report({'ERROR'}, "SVG Importer not found.")
+                    return {'CANCELLED'}
+
             after = set(bpy.data.objects[:])
             imported = [o for o in (after - before) if o.type == 'CURVE']
             

@@ -25,12 +25,35 @@ def convert_curves_to_gpv3(curves, target_collection=None):
         gp_layer = gp_data.layers.get(layer_name) or gp_data.layers.new(layer_name)
         
         # In GPv3, we add frames and drawings
+        # In newer API versions (4.3+), we must create a drawing and assign it
         frame = gp_layer.frames.new(1)
-        drawing = frame.drawing
         
+        # Check if drawing exists or needs to be created
+        drawing = getattr(frame, "drawing", None)
+        if drawing is None:
+            # Create a new drawing in the grease_pencil_drawings collection
+            # Note: The exact collection name might vary by dev version, but 'drawings' is common
+            if hasattr(gp_data, "drawings"):
+                drawing = gp_data.drawings.new("Drawing")
+                frame.drawing = drawing
+            elif hasattr(bpy.data, "grease_pencil_drawings"):
+                drawing = bpy.data.grease_pencil_drawings.new("Drawing")
+                frame.drawing = drawing
+        
+        if not drawing:
+            print(f"Warning: Could not create/access GPv3 drawing for layer {layer_name}")
+            continue
+
         # Convert curve splines to GP strokes
         for spline in curve_obj.data.splines:
-            stroke = drawing.strokes.new()
+            # Newer API uses add_stroke() or similar if new() is not available
+            if hasattr(drawing.strokes, "new"):
+                stroke = drawing.strokes.new()
+            else:
+                # Fallback for alternative GPv3 implementations
+                stroke = drawing.add_stroke() if hasattr(drawing, "add_stroke") else None
+            
+            if not stroke: continue
             
             # Transfer points and handle handles for Bezier
             points = []
@@ -53,10 +76,19 @@ def convert_curves_to_gpv3(curves, target_collection=None):
             
     # Apply global settings from properties
     props = bpy.context.scene.vectart_props
-    # Note: GPv3 thickness is often handled via modifiers or per-stroke
-    # We can add a simple thickness modifier
-    mod = gp_obj.modifiers.new(name="Thickness", type='GREASE_PENCIL_THICKNESS')
-    mod.thickness = props.gp_thickness
+    
+    # Try different modifier type identifiers for GPv3
+    mod_type = 'GREASE_PENCIL_THICKNESS'
+    # In 5.1/4.3+, it might be simplified or renamed
+    if not hasattr(bpy.types, "GreasePencilThicknessModifier"):
+        if hasattr(bpy.types, "ThicknessModifier"):
+            mod_type = 'THICKNESS'
+    
+    try:
+        mod = gp_obj.modifiers.new(name="Thickness", type=mod_type)
+        mod.thickness = props.gp_thickness
+    except Exception as e:
+        print(f"Warning: Could not add thickness modifier: {str(e)}")
             
     return gp_obj
 
