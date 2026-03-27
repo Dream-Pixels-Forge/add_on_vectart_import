@@ -69,15 +69,33 @@ class VECTART_OT_ImportSVG(Operator):
             # Store existing objects to find new ones
             existing = set(bpy.data.objects[:])
             
-            # Use the most appropriate SVG importer available
-            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
-                bpy.ops.import_scene.svg(filepath=self.filepath)
-            else:
+            # Use the most appropriate SVG importer available with robust fallback
+            import_success = False
+            
+            # Try Blender 4.3+ / 5.0+ experimental/new importer
+            if not import_success and hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                try:
+                    bpy.ops.import_scene.svg(filepath=self.filepath)
+                    import_success = True
+                except Exception: pass
+            
+            # Try standard SVG importer (Legacy/Current)
+            if not import_success and hasattr(bpy.ops, "import_curve") and hasattr(bpy.ops.import_curve, "svg"):
                 try:
                     bpy.ops.import_curve.svg(filepath=self.filepath)
-                except AttributeError:
-                    self.report({'ERROR'}, "SVG Importer not found. Please enable SVG support in Blender.")
-                    return {'CANCELLED'}
+                    import_success = True
+                except Exception: pass
+                
+            # Final fallback for some specific Blender builds
+            if not import_success and hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "svg_import"):
+                try:
+                    bpy.ops.wm.svg_import(filepath=self.filepath)
+                    import_success = True
+                except Exception: pass
+
+            if not import_success:
+                self.report({'ERROR'}, "No SVG importer found. Please ensure 'Import-Export: Scalable Vector Graphics (SVG) 1.1' is enabled in Preferences.")
+                return {'CANCELLED'}
 
             new_objs = set(bpy.data.objects[:]) - existing
             imported_curves = [obj for obj in new_objs if obj.type == 'CURVE']
@@ -135,15 +153,33 @@ class VECTART_OT_ImportLibrarySVG(Operator):
             # Store existing objects to find new ones
             existing = set(bpy.data.objects[:])
             
-            # Use the most appropriate SVG importer available
-            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
-                bpy.ops.import_scene.svg(filepath=props.preview_index)
-            else:
+            # 2. Use the most appropriate SVG importer available with robust fallback
+            import_success = False
+            
+            # Try Blender 4.3+ / 5.0+ experimental/new importer
+            if not import_success and hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                try:
+                    bpy.ops.import_scene.svg(filepath=props.preview_index)
+                    import_success = True
+                except Exception: pass
+            
+            # Try standard SVG importer (Legacy/Current)
+            if not import_success and hasattr(bpy.ops, "import_curve") and hasattr(bpy.ops.import_curve, "svg"):
                 try:
                     bpy.ops.import_curve.svg(filepath=props.preview_index)
-                except AttributeError:
-                    self.report({'ERROR'}, "SVG Importer not found. Please enable SVG support in Blender.")
-                    return {'CANCELLED'}
+                    import_success = True
+                except Exception: pass
+                
+            # Final fallback for some specific Blender builds
+            if not import_success and hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "svg_import"):
+                try:
+                    bpy.ops.wm.svg_import(filepath=props.preview_index)
+                    import_success = True
+                except Exception: pass
+
+            if not import_success:
+                self.report({'ERROR'}, "No SVG importer found. Please ensure 'Import-Export: Scalable Vector Graphics (SVG) 1.1' is enabled in Preferences.")
+                return {'CANCELLED'}
 
             new_objs = set(bpy.data.objects[:]) - existing
             curves = [obj for obj in new_objs if obj.type == 'CURVE']
@@ -492,14 +528,31 @@ class VECTART_OT_ReimportEditedSVG(Operator):
         # 3. Import updated SVG
         existing_objs = set(bpy.data.objects[:])
         
-        if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
-            bpy.ops.import_scene.svg(filepath=path)
-        else:
+        import_success = False
+        # Try Blender 4.3+ / 5.0+ experimental/new importer
+        if not import_success and hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+            try:
+                bpy.ops.import_scene.svg(filepath=path)
+                import_success = True
+            except Exception: pass
+        
+        # Try standard SVG importer (Legacy/Current)
+        if not import_success and hasattr(bpy.ops, "import_curve") and hasattr(bpy.ops.import_curve, "svg"):
             try:
                 bpy.ops.import_curve.svg(filepath=path)
-            except AttributeError:
-                self.report({'ERROR'}, "SVG Importer not found.")
-                return {'CANCELLED'}
+                import_success = True
+            except Exception: pass
+            
+        # Final fallback
+        if not import_success and hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "svg_import"):
+            try:
+                bpy.ops.wm.svg_import(filepath=path)
+                import_success = True
+            except Exception: pass
+
+        if not import_success:
+            self.report({'ERROR'}, "No SVG importer found.")
+            return {'CANCELLED'}
 
         imported = [o for o in (set(bpy.data.objects[:]) - existing_objs) if o.type == 'CURVE']
         
@@ -609,14 +662,31 @@ class VECTART_OT_ReimportSVG(Operator):
             # 1. Track imported objects
             before = set(bpy.data.objects[:])
             
-            if hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
-                bpy.ops.import_scene.svg(filepath=self.filepath)
-            else:
+            import_success = False
+            # Try Blender 4.3+ / 5.0+ experimental/new importer
+            if not import_success and hasattr(bpy.ops, "import_scene") and hasattr(bpy.ops.import_scene, "svg"):
+                try:
+                    bpy.ops.import_scene.svg(filepath=self.filepath)
+                    import_success = True
+                except Exception: pass
+            
+            # Try standard SVG importer (Legacy/Current)
+            if not import_success and hasattr(bpy.ops, "import_curve") and hasattr(bpy.ops.import_curve, "svg"):
                 try:
                     bpy.ops.import_curve.svg(filepath=self.filepath)
-                except AttributeError:
-                    self.report({'ERROR'}, "SVG Importer not found.")
-                    return {'CANCELLED'}
+                    import_success = True
+                except Exception: pass
+                
+            # Final fallback
+            if not import_success and hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "svg_import"):
+                try:
+                    bpy.ops.wm.svg_import(filepath=self.filepath)
+                    import_success = True
+                except Exception: pass
+
+            if not import_success:
+                self.report({'ERROR'}, "No SVG importer found.")
+                return {'CANCELLED'}
 
             after = set(bpy.data.objects[:])
             imported = [o for o in (after - before) if o.type == 'CURVE']
