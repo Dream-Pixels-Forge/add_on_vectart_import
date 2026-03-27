@@ -69,11 +69,11 @@ class VECTART_OT_ImportSVG(Operator):
             # Store existing objects to find new ones
             existing = set(bpy.data.objects[:])
             
-            # Strictly use Blender 5.1.0+ SVG importer
+            # Use the standard SVG importer (Curve based)
             try:
-                bpy.ops.import_scene.svg(filepath=self.filepath)
+                bpy.ops.import_curve.svg(filepath=self.filepath)
             except AttributeError:
-                self.report({'ERROR'}, "SVG Importer (import_scene.svg) not found. This version requires Blender 5.1.0.")
+                self.report({'ERROR'}, "SVG Importer (import_curve.svg) not found. Please enable the 'Scalable Vector Graphics (SVG)' extension.")
                 return {'CANCELLED'}
 
             new_objs = set(bpy.data.objects[:]) - existing
@@ -132,11 +132,11 @@ class VECTART_OT_ImportLibrarySVG(Operator):
             # Store existing objects to find new ones
             existing = set(bpy.data.objects[:])
             
-            # Strictly use Blender 5.1.0+ SVG importer
+            # Use the standard SVG importer (Curve based) which is the basis for VectArt's processing
             try:
-                bpy.ops.import_scene.svg(filepath=props.preview_index)
+                bpy.ops.import_curve.svg(filepath=props.preview_index)
             except AttributeError:
-                self.report({'ERROR'}, "SVG Importer (import_scene.svg) not found. This version requires Blender 5.1.0.")
+                self.report({'ERROR'}, "SVG Importer (import_curve.svg) not found. Please enable the 'Scalable Vector Graphics (SVG)' extension.")
                 return {'CANCELLED'}
 
             new_objs = set(bpy.data.objects[:]) - existing
@@ -492,9 +492,9 @@ class VECTART_OT_ReimportEditedSVG(Operator):
         existing_objs = set(bpy.data.objects[:])
         
         try:
-            bpy.ops.import_scene.svg(filepath=path)
+            bpy.ops.import_curve.svg(filepath=path)
         except AttributeError:
-            self.report({'ERROR'}, "SVG Importer (import_scene.svg) not found.")
+            self.report({'ERROR'}, "SVG Importer (import_curve.svg) not found.")
             return {'CANCELLED'}
 
         imported = [o for o in (set(bpy.data.objects[:]) - existing_objs) if o.type == 'CURVE']
@@ -606,9 +606,9 @@ class VECTART_OT_ReimportSVG(Operator):
             before = set(bpy.data.objects[:])
             
             try:
-                bpy.ops.import_scene.svg(filepath=self.filepath)
+                bpy.ops.import_curve.svg(filepath=self.filepath)
             except AttributeError:
-                self.report({'ERROR'}, "SVG Importer (import_scene.svg) not found.")
+                self.report({'ERROR'}, "SVG Importer (import_curve.svg) not found.")
                 return {'CANCELLED'}
 
             after = set(bpy.data.objects[:])
